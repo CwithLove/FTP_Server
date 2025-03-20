@@ -9,6 +9,28 @@ pid_t* childs;
 
 void echo(int connfd);
 
+void file_transfer_server(int connfd){
+    char buf[MAXLINE];
+    rio_t rio;
+    char filename[MAXLINE];
+    FILE *file;
+
+    Rio_readinitb(&rio, connfd);
+    Rio_readlineb(&rio, filename, MAXLINE);
+    fprintf(stdout, "filename: %s\n", filename);
+    file = Fopen(filename, "r");
+
+    fprintf(stdout, "file: %p\n", file);
+    if (file == NULL) {
+        fprintf(stderr, "Error: file not found\n");
+        return;
+    }
+    while (Fgets(buf, MAXLINE, file) != NULL) {
+        Rio_writen(connfd, buf, strlen(buf));
+    }
+    Fclose(file);
+}
+
 void sigchild_handler(int sig) {
     pid_t pid;
     while ((pid = waitpid(-1, 0, WNOHANG)) > 0) {
@@ -48,7 +70,8 @@ void work_client(int listenfd) {
         printf("server connected to %s (%s)\n", client_hostname,
                client_ip_string);
         //echo(connfd);
-        
+        file_transfer_server(connfd);
+
         Close(connfd);
     }
 }
@@ -84,7 +107,7 @@ int main(int argc, char **argv)
 
     Signal(SIGCHLD, sigchild_handler);
     Signal(SIGINT, sigint_handler);
-
+    
     // work_client(listenfd);
     while(1);
 }
