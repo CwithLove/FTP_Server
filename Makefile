@@ -1,35 +1,37 @@
-.PHONY: all, clean
+.PHONY: all clean
 
 # Disable implicit rules
 .SUFFIXES:
 
-# Keep intermediate files
-#.PRECIOUS: %.o
-
+# Compiler settings
 CC = gcc
 CFLAGS = -Wall -Werror
-LDFLAGS =
+LDFLAGS = -lpthread
 
-# Note: -lnsl does not seem to work on Mac OS but will
-# probably be necessary on Solaris for linking network-related functions 
-#LIBS += -lsocket -lnsl -lrt
-LIBS += -lpthread
+# Directory structure
+CLIENTDIR = client
+SERVERDIR = server
+LIBSDIR = libs
+INCLDIR = -I./$(LIBSDIR)
 
-INCLUDE = csapp.h
-OBJS = csapp.o echo.o
-INCLDIR = -I.
+# File definitions
+PROGS = $(CLIENTDIR)/client $(SERVERDIR)/server
+INCLUDES = $(LIBSDIR)/csapp.h
+OBJS = $(LIBSDIR)/csapp.o $(LIBSDIR)/echo.o
 
-PROGS = server client 
-
-
+# Default target
 all: $(PROGS)
 
-%.o: %.c $(INCLUDE)
-	$(CC) $(CFLAGS) $(INCLDIR) -c -o $@ $<
-	
+# Pattern rules
+%.o: %.c $(INCLUDES)
+	@echo "Compiling $@"
+	$(CC) $(CFLAGS) $(INCLDIR) -c $< -o $@
+
 %: %.o $(OBJS)
-	$(CC) -o $@ $(LDFLAGS) $^ $(LIBS)
-#	$(CC) -o $@ $(LDFLAGS) $(LIBS) $^
-	
+	@echo "Linking $@"
+	$(CC) $(CFLAGS) $^ $(OBJS) $(LDFLAGS) -o $@
+
+# Clean target
 clean:
-	rm -f $(PROGS) *.o
+	@echo "Cleaning..."
+	rm -f $(PROGS) $(CLIENTDIR)/*.o $(SERVERDIR)/*.o $(LIBSDIR)/*.o
