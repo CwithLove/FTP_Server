@@ -3,6 +3,8 @@
 #ifndef FTP_PROTOCOL_H
 #define FTP_PROTOCOL_H
 
+#define MAX_FILENAME 256
+
 // This structure is used to define the request sent by the client
 typedef enum {
     GET    // Only GET is processed in this phase
@@ -14,7 +16,7 @@ typedef enum {
 // The request structure for the FTP protocol
 typedef struct {
     int type;          // The request type, should be one of typereq_t values
-    char filename[256]; // The file name requested by the client
+    char filename[MAX_FILENAME]; // The file name requested by the client
 } request_t;
 
 #endif // FTP_PROTOCOL_H
