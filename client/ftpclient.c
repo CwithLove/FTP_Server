@@ -10,8 +10,7 @@ void file_transfer_client(int clientfd, char *filename) {
     int n;
 
     Rio_readinitb(&rio, clientfd);
-    sprintf(buf, "GET %s\r\n", filename);
-    Rio_writen(clientfd, buf, strlen(buf));
+    Rio_writen(clientfd, filename, strlen(filename));
     while ((n = Rio_readlineb(&rio, buf, MAXLINE)) > 0) {
         Fputs(buf, stdout);
     }
