@@ -2,25 +2,25 @@
  * echoclient.c - An echo client
  */
 #include "csapp.h"
+#include "ftp_protocol.h"
 
 int main(int argc, char **argv) {
-    int clientfd, port;
+    int clientfd;
     char *host, buf[MAXLINE];
     rio_t rio;
 
-    if (argc != 3) {
-        fprintf(stderr, "usage: %s <host> <port>\n", argv[0]);
+    if (argc != 2) {
+        fprintf(stderr, "usage: %s <host>\n", argv[0]);
         exit(0);
     }
     host = argv[1];
-    port = atoi(argv[2]);
 
     /*
      * Note that the 'host' can be a name or an IP address.
      * If necessary, Open_clientfd will perform the name resolution
      * to obtain the IP address.
      */
-    clientfd = Open_clientfd(host, port);
+    clientfd = Open_clientfd(host, PORT);
     
     /*
      * At this stage, the connection is established between the client

@@ -1,8 +1,11 @@
 #include "csapp.h"
+#include "ftp_protocol.h"
 
 #define MAX_NAME_LEN 256
 
 #define MAX_PROCESS 3
+
+pid_t* childs;
 
 void echo(int connfd);
 
@@ -10,12 +13,16 @@ void sigchild_handler(int sig) {
     pid_t pid;
     while ((pid = waitpid(-1, 0, WNOHANG)) > 0) {
         fprintf(stdout, "child %d reaped", pid);
+        fflush(stdout);
     }
 }
 
 void sigint_handler(int sig) {
     printf("\nArrêt du serveur...\n");
-    kill(-getpgrp(), SIGINT);
+    for (int i = 0; i < MAX_PROCESS; i++) {
+        kill(childs[i], SIGINT);
+    }
+    exit(0);
 }
 
 void work_client(int listenfd) {
@@ -43,7 +50,6 @@ void work_client(int listenfd) {
         echo(connfd);
         Close(connfd);
     }
-    exit(0);
 }
 
 /* 
@@ -52,29 +58,32 @@ void work_client(int listenfd) {
  */
 int main(int argc, char **argv)
 {
-    int listenfd, port;
+    int listenfd;
     pid_t pid;
 
-    Signal(SIGCHLD, sigchild_handler);
-    if (Signal(SIGINT, sigint_handler) == SIG_ERR) {
-        unix_error("Signal");
-    }
 
-    if (argc != 2) {
+    if (argc != 1) {
         fprintf(stderr, "usage: %s <port>\n", argv[0]);
         exit(0);
     }
 
-    port = atoi(argv[1]);
+    // port = atoi(argv[1]);
 
-    listenfd = Open_listenfd(port);
+    listenfd = Open_listenfd(PORT);
+
+    childs = (pid_t*)malloc(MAX_PROCESS * sizeof(pid_t));
 
     for (int i = 0; i < MAX_PROCESS; i++) {
         pid = fork();
         if (pid == 0) {
             work_client(listenfd);
         }
+        childs[i] = pid;
     }
 
-    work_client(listenfd);
+    Signal(SIGCHLD, sigchild_handler);
+    Signal(SIGINT, sigint_handler);
+
+    // work_client(listenfd);
+    while(1);
 }
