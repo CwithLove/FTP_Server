@@ -47,7 +47,8 @@ void work_client(int listenfd) {
                   INET_ADDRSTRLEN);
         printf("server connected to %s (%s)\n", client_hostname,
                client_ip_string);
-        echo(connfd);
+        //echo(connfd);
+        
         Close(connfd);
     }
 }

@@ -4,6 +4,21 @@
 #include "csapp.h"
 #include "ftp_protocol.h"
 
+void file_transfer_client(int clientfd, char *filename) {
+    char buf[MAXLINE];
+    rio_t rio;
+    int n;
+
+    Rio_readinitb(&rio, clientfd);
+    sprintf(buf, "GET %s\r\n", filename);
+    Rio_writen(clientfd, buf, strlen(buf));
+    while ((n = Rio_readlineb(&rio, buf, MAXLINE)) > 0) {
+        Fputs(buf, stdout);
+    }
+}
+
+
+
 int main(int argc, char **argv) {
     int clientfd;
     char *host, buf[MAXLINE];
