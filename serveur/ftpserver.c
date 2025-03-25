@@ -2,59 +2,94 @@
 #include "ftp_protocol.h"
 
 #define MAX_NAME_LEN 256
-
-#define MAX_PROCESS 3
+#define NB_PROC 3
 
 pid_t* childs;
 
-void echo(int connfd);
-
 void file_transfer_server(int connfd){
-    char buf[MAXLINE];
-    rio_t rio;
-    char filename[MAXLINE];
+    request_t req;
+    response_t res;
+    char *buf;
+    char filepath[MAXLINE];
     FILE *file;
-
-    Rio_readinitb(&rio, connfd);
-    Rio_readlineb(&rio, filename, MAXLINE);
-    fprintf(stdout, "filename: %s\n", filename);
-    file = Fopen(filename, "r");
-
-    fprintf(stdout, "file: %p\n", file);
-    if (file == NULL) {
-        fprintf(stderr, "Error: file not found\n");
+    
+    // If the number of bytes read is different from the number of bytes expected
+    if (Rio_readn(connfd, &req, sizeof(request_t)) != sizeof(request_t)) {
+        fprintf(stderr, "Error: Invalid request received!\n");
         return;
     }
-    while (Fgets(buf, MAXLINE, file) != NULL) {
-        Rio_writen(connfd, buf, strlen(buf));
+
+    switch (req.type)
+    {
+    case GET:
+        // Create the file path
+        snprintf(filepath, STORAGE_PATH_LEN + MAX_FILENAME, "%s%s", STORAGE_PATH, req.filename);
+        
+        // Open the file
+        file = fopen(filepath, "rb");
+        if (file == NULL) {
+            res.code = ERROR_FILE_NOT_FOUND;
+            res.file_size = 0;
+            Rio_writen(connfd, &res, sizeof(response_t));
+            return;
+        }
+
+        // Determine the size of the file
+        fseek(file, 0, SEEK_END);
+        res.file_size = ftell(file); // Get the current position in the file
+        rewind(file); // Go back to the beginning of the file
+
+        // Send the response to the client
+        buf = malloc(res.file_size);
+
+        // If the number of bytes read is different from the number of bytes expected
+        if (fread(buf, 1, res.file_size, file) != res.file_size) {
+            fprintf(stderr, "Error: reading file\n");
+            res.code = ERROR_FILE_NOT_FOUND;
+            res.file_size = 0;
+            Rio_writen(connfd, &res, sizeof(response_t));
+            free(buf);
+            Fclose(file);
+            return;
+        }
+        Fclose(file);
+        res.code = SUCCESS;
+        Rio_writen(connfd, &res, sizeof(response_t));
+        Rio_writen(connfd, buf, res.file_size);
+        free(buf);
+        return;
+
+    default:
+        res.code = ERROR_INVALID_REQUEST;
+        res.file_size = 0;
+        Rio_writen(connfd, &res, sizeof(response_t));
+        return;
     }
-    Fclose(file);
 }
 
 void sigchild_handler(int sig) {
     pid_t pid;
     while ((pid = waitpid(-1, 0, WNOHANG)) > 0) {
         fprintf(stdout, "child %d reaped", pid);
-        fflush(stdout);
     }
 }
 
 void sigint_handler(int sig) {
     printf("\nArrêt du serveur...\n");
-    for (int i = 0; i < MAX_PROCESS; i++) {
+    for (int i = 0; i < NB_PROC; i++) {
         kill(childs[i], SIGINT);
     }
     exit(0);
 }
 
 void work_client(int listenfd) {
-    int connfd;
     socklen_t clientlen;
     struct sockaddr_in clientaddr;
-    char client_ip_string[INET_ADDRSTRLEN];
-    char client_hostname[MAX_NAME_LEN];
+    char client_hostname[MAX_NAME_LEN], client_ip_string[INET_ADDRSTRLEN];
 
-    clientlen = (socklen_t)sizeof(clientaddr);
+    int connfd;
+
+    clientlen = sizeof(struct sockaddr_in);
 
     while (1) {
         connfd = accept(listenfd, (SA *)&clientaddr, &clientlen);
@@ -69,45 +104,33 @@ void work_client(int listenfd) {
                   INET_ADDRSTRLEN);
         printf("server connected to %s (%s)\n", client_hostname,
                client_ip_string);
-        //echo(connfd);
         file_transfer_server(connfd);
-
         Close(connfd);
     }
 }
 
-/* 
- * Note that this code only works with IPv4 addresses
- * (IPv6 is not supported)
- */
-int main(int argc, char **argv)
-{
+int main(void) {
     int listenfd;
     pid_t pid;
 
-
-    if (argc != 1) {
-        fprintf(stderr, "usage: %s <port>\n", argv[0]);
-        exit(0);
-    }
-
-    // port = atoi(argv[1]);
+    childs = (pid_t*)malloc(NB_PROC * sizeof(pid_t));
 
     listenfd = Open_listenfd(PORT);
 
-    childs = (pid_t*)malloc(MAX_PROCESS * sizeof(pid_t));
-
-    for (int i = 0; i < MAX_PROCESS; i++) {
-        pid = fork();
-        if (pid == 0) {
+    for (int i = 0; i < NB_PROC; i++) {
+        pid = Fork();
+        if (pid == 0) {  // Child process
             work_client(listenfd);
+            exit(0);
         }
         childs[i] = pid;
     }
 
     Signal(SIGCHLD, sigchild_handler);
     Signal(SIGINT, sigint_handler);
-    
-    // work_client(listenfd);
-    while(1);
+
+    while (1) 
+        Pause(); 
+
+    return 0;
 }

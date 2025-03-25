@@ -25,7 +25,11 @@ LIBOBJ = $(patsubst $(LIBDIR)/%.c,$(LIBDIR)/%.o,$(LIBSRC))
 SERVOBJ = $(patsubst $(SERVERDIR)/%.c,$(SERVERDIR)/%.o,$(SERVERSRC))
 CLIOBJ = $(patsubst $(CLIENTDIR)/%.c,$(CLIENTDIR)/%.o,$(CLIENTSRC))
 
-all: ftpserver ftpclient
+all: storage ftpserver ftpclient
+
+storage:
+	mkdir -p $(SERVERDIR)/storage
+	mkdir -p $(CLIENTDIR)/storage
 
 %.o: %.c $(INCLUDE)
 	$(CC) $(CFLAGS) $(CPPFLAGS) $(INCLDIR) -c -o $@ $<
@@ -37,4 +41,4 @@ ftpserver: $(LIBOBJ) $(SERVOBJ)
 	$(CC) $^ $(LIBS) -o $(SERVERDIR)/$@ $(LDFLAGS)
 
 clean:
-	rm -f $(LIBOBJ) $(SERVOBJ) $(CLIOBJ) $(SERVERDIR)/ftpserver $(CLIENTDIR)/ftpclient
+	rm -f $(LIBOBJ) $(SERVOBJ) $(CLIOBJ) $(SERVERDIR)/ftpserver $(CLIENTDIR)/ftpclient $(SERVERDIR)/storage/* $(CLIENTDIR)/storage/*
