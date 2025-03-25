@@ -3,35 +3,38 @@
 # Disable implicit rules
 .SUFFIXES:
 
-# Compiler settings
+# Keep intermediate files
+#.PRECIOUS: %.o
+
 CC = gcc
 CFLAGS = -Wall -Werror
-LDFLAGS = -lpthread
+LDFLAGS =
+LIBS += -lpthread
 
-# Directory structure
+# Directories
+SERVERDIR = serveur
 CLIENTDIR = client
-SERVERDIR = server
-LIBSDIR = libs
-INCLDIR = -I./$(LIBSDIR)
+LIBDIR = libs
+INCLDIR = -I$(LIBDIR)
 
-# File definitions
-PROGS = $(CLIENTDIR)/client $(SERVERDIR)/server
-INCLUDES = $(LIBSDIR)/csapp.h
-OBJS = $(LIBSDIR)/csapp.o $(LIBSDIR)/echo.o
+# Source and object files
+SERVERSRC = $(wildcard $(SERVERDIR)/*.c)
+CLIENTSRC = $(wildcard $(CLIENTDIR)/*.c)
+LIBSRC = $(wildcard $(LIBDIR)/*.c)
+LIBOBJ = $(patsubst $(LIBDIR)/%.c,$(LIBDIR)/%.o,$(LIBSRC))
+SERVOBJ = $(patsubst $(SERVERDIR)/%.c,$(SERVERDIR)/%.o,$(SERVERSRC))
+CLIOBJ = $(patsubst $(CLIENTDIR)/%.c,$(CLIENTDIR)/%.o,$(CLIENTSRC))
 
-# Default target
-all: $(PROGS)
+all: ftpserver ftpclient
 
-# Pattern rules
-%.o: %.c $(INCLUDES)
-	@echo "Compiling $@"
-	$(CC) $(CFLAGS) $(INCLDIR) -c $< -o $@
+%.o: %.c $(INCLUDE)
+	$(CC) $(CFLAGS) $(CPPFLAGS) $(INCLDIR) -c -o $@ $<
 
-%: %.o $(OBJS)
-	@echo "Linking $@"
-	$(CC) $(CFLAGS) $^ $(OBJS) $(LDFLAGS) -o $@
+ftpclient: $(LIBOBJ) $(CLIOBJ)
+	$(CC) $^ $(LIBS) -o $(CLIENTDIR)/$@ $(LDFLAGS)
 
-# Clean target
+ftpserver: $(LIBOBJ) $(SERVOBJ)
+	$(CC) $^ $(LIBS) -o $(SERVERDIR)/$@ $(LDFLAGS)
+
 clean:
-	@echo "Cleaning..."
-	rm -f $(PROGS) $(CLIENTDIR)/*.o $(SERVERDIR)/*.o $(LIBSDIR)/*.o
+	rm -f $(LIBOBJ) $(SERVOBJ) $(CLIOBJ) $(SERVERDIR)/ftpserver $(CLIENTDIR)/ftpclient
