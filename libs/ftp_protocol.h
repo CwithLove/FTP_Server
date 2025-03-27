@@ -2,7 +2,7 @@
 
 #ifndef FTP_PROTOCOL_H
 #define FTP_PROTOCOL_H
-
+#include <time.h>
 #define MAX_FILENAME 256
 
 #define PORT 9919 // A CHANGER
@@ -13,8 +13,8 @@
 // This structure is used to define the request sent by the client
 typedef enum {
     GET,    // Only GET is processed in this phase
-    PUT, // TO DO LATER
-    LS  // TO DO LATER
+    // PUT, // TO DO LATER
+    // LS  // TO DO LATER
 } typereq_t;
 
 

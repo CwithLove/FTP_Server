@@ -30,7 +30,7 @@ void file_transfer_server(int connfd){
         if (file == NULL) {
             res.code = ERROR_FILE_NOT_FOUND;
             res.file_size = 0;
-            Rio_writen(connfd, &res, sizeof(response_t));
+            rio_writen(connfd, &res, sizeof(response_t));
             return;
         }
 
