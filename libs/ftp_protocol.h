@@ -1,12 +1,24 @@
-// ftp_protocol.h
-
 #ifndef FTP_PROTOCOL_H
 #define FTP_PROTOCOL_H
+
 #include <time.h>
+#include "csapp.h"
+#include <stdint.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <errno.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+
 #define MAX_FILENAME 256
 
 #define PORT 9919 // A CHANGER
-
+#define MESSAGE_SIZE 1024
 #define STORAGE_PATH "./storage/"
 #define STORAGE_PATH_LEN 10
 
@@ -36,7 +48,7 @@ typedef enum {
 // The response structure for the FTP protocol
 typedef struct {
     response_code_t code;       // The response code, should be one of response_code_t values
-    size_t file_size;           // The size of the file in bytes
+    uint64_t file_size;           // The size of the file in bytes
 } response_t;
 
 #endif // FTP_PROTOCOL_H

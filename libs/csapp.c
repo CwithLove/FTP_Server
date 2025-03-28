@@ -196,18 +196,18 @@ int Open(const char *pathname, int flags, mode_t mode)
     return rc;
 }
 
-ssize_t Read(int fd, void *buf, size_t count) 
+uint64_t Read(int fd, void *buf, size_t count) 
 {
-    ssize_t rc;
+    uint64_t rc;
 
     if ((rc = read(fd, buf, count)) < 0) 
 	unix_error("Read error");
     return rc;
 }
 
-ssize_t Write(int fd, const void *buf, size_t count) 
+uint64_t Write(int fd, const void *buf, size_t count) 
 {
-    ssize_t rc;
+    uint64_t rc;
 
     if ((rc = write(fd, buf, count)) < 0)
 	unix_error("Write error");
@@ -554,10 +554,10 @@ void V(sem_t *sem)
  * rio_readn - robustly read n bytes (unbuffered)
  */
 /* $begin rio_readn */
-ssize_t rio_readn(int fd, void *usrbuf, size_t n) 
+uint64_t rio_readn(int fd, void *usrbuf, size_t n) 
 {
     size_t nleft = n;
-    ssize_t nread;
+    uint64_t nread;
     char *bufp = usrbuf;
 
     while (nleft > 0) {
@@ -580,10 +580,10 @@ ssize_t rio_readn(int fd, void *usrbuf, size_t n)
  * rio_writen - robustly write n bytes (unbuffered)
  */
 /* $begin rio_writen */
-ssize_t rio_writen(int fd, void *usrbuf, size_t n) 
+uint64_t rio_writen(int fd, void *usrbuf, size_t n) 
 {
     size_t nleft = n;
-    ssize_t nwritten;
+    uint64_t nwritten;
     char *bufp = usrbuf;
 
     while (nleft > 0) {
@@ -610,7 +610,7 @@ ssize_t rio_writen(int fd, void *usrbuf, size_t n)
  *    read() if the internal buffer is empty.
  */
 /* $begin rio_read */
-static ssize_t rio_read(rio_t *rp, char *usrbuf, size_t n)
+static uint64_t rio_read(rio_t *rp, char *usrbuf, size_t n)
 {
     int cnt;
 
@@ -654,10 +654,10 @@ void rio_readinitb(rio_t *rp, int fd)
  * rio_readnb - Robustly read n bytes (buffered)
  */
 /* $begin rio_readnb */
-ssize_t rio_readnb(rio_t *rp, void *usrbuf, size_t n) 
+uint64_t rio_readnb(rio_t *rp, void *usrbuf, size_t n) 
 {
     size_t nleft = n;
-    ssize_t nread;
+    uint64_t nread;
     char *bufp = usrbuf;
     
     while (nleft > 0) {
@@ -680,7 +680,7 @@ ssize_t rio_readnb(rio_t *rp, void *usrbuf, size_t n)
  * rio_readlineb - robustly read a text line (buffered)
  */
 /* $begin rio_readlineb */
-ssize_t rio_readlineb(rio_t *rp, void *usrbuf, size_t maxlen) 
+uint64_t rio_readlineb(rio_t *rp, void *usrbuf, size_t maxlen) 
 {
     int n, rc;
     char c, *bufp = usrbuf;
@@ -706,9 +706,9 @@ ssize_t rio_readlineb(rio_t *rp, void *usrbuf, size_t maxlen)
 /**********************************
  * Wrappers for robust I/O routines
  **********************************/
-ssize_t Rio_readn(int fd, void *ptr, size_t nbytes) 
+uint64_t Rio_readn(int fd, void *ptr, size_t nbytes) 
 {
-    ssize_t n;
+    uint64_t n;
   
     if ((n = rio_readn(fd, ptr, nbytes)) < 0)
 	unix_error("Rio_readn error");
@@ -717,7 +717,7 @@ ssize_t Rio_readn(int fd, void *ptr, size_t nbytes)
 
 void Rio_writen(int fd, void *usrbuf, size_t n) 
 {
-    if (rio_writen(fd, usrbuf, n) != (ssize_t)n)
+    if (rio_writen(fd, usrbuf, n) != (uint64_t)n)
 	unix_error("Rio_writen error");
 }
 
@@ -726,18 +726,18 @@ void Rio_readinitb(rio_t *rp, int fd)
     rio_readinitb(rp, fd);
 } 
 
-ssize_t Rio_readnb(rio_t *rp, void *usrbuf, size_t n) 
+uint64_t Rio_readnb(rio_t *rp, void *usrbuf, size_t n) 
 {
-    ssize_t rc;
+    uint64_t rc;
 
     if ((rc = rio_readnb(rp, usrbuf, n)) < 0)
 	unix_error("Rio_readnb error");
     return rc;
 }
 
-ssize_t Rio_readlineb(rio_t *rp, void *usrbuf, size_t maxlen) 
+uint64_t Rio_readlineb(rio_t *rp, void *usrbuf, size_t maxlen) 
 {
-    ssize_t rc;
+    uint64_t rc;
 
     if ((rc = rio_readlineb(rp, usrbuf, maxlen)) < 0)
 	unix_error("Rio_readlineb error");

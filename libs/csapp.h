@@ -88,8 +88,8 @@ int Sigismember(const sigset_t *set, int signum);
 
 /* Unix I/O wrappers */
 int Open(const char *pathname, int flags, mode_t mode);
-ssize_t Read(int fd, void *buf, size_t count);
-ssize_t Write(int fd, const void *buf, size_t count);
+uint64_t Read(int fd, void *buf, size_t count);
+uint64_t Write(int fd, const void *buf, size_t count);
 off_t Lseek(int fildes, off_t offset, int whence);
 void Close(int fd);
 int Select(int  n, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, 
@@ -149,18 +149,18 @@ void P(sem_t *sem);
 void V(sem_t *sem);
 
 /* Rio (Robust I/O) package */
-ssize_t rio_readn(int fd, void *usrbuf, size_t n);
-ssize_t rio_writen(int fd, void *usrbuf, size_t n);
+uint64_t rio_readn(int fd, void *usrbuf, size_t n);
+uint64_t rio_writen(int fd, void *usrbuf, size_t n);
 void rio_readinitb(rio_t *rp, int fd); 
-ssize_t	rio_readnb(rio_t *rp, void *usrbuf, size_t n);
-ssize_t	rio_readlineb(rio_t *rp, void *usrbuf, size_t maxlen);
+uint64_t	rio_readnb(rio_t *rp, void *usrbuf, size_t n);
+uint64_t	rio_readlineb(rio_t *rp, void *usrbuf, size_t maxlen);
 
 /* Wrappers for Rio package */
-ssize_t Rio_readn(int fd, void *usrbuf, size_t n);
+uint64_t Rio_readn(int fd, void *usrbuf, size_t n);
 void Rio_writen(int fd, void *usrbuf, size_t n);
 void Rio_readinitb(rio_t *rp, int fd); 
-ssize_t Rio_readnb(rio_t *rp, void *usrbuf, size_t n);
-ssize_t Rio_readlineb(rio_t *rp, void *usrbuf, size_t maxlen);
+uint64_t Rio_readnb(rio_t *rp, void *usrbuf, size_t n);
+uint64_t Rio_readlineb(rio_t *rp, void *usrbuf, size_t maxlen);
 
 /* Client/server helper functions */
 extern int gai_error;

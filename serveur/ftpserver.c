@@ -1,76 +1,92 @@
 #include "csapp.h"
 #include "ftp_protocol.h"
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 #define MAX_NAME_LEN 256
 #define NB_PROC 3
 
 pid_t* childs;
 
-void file_transfer_server(int connfd){
+int file_transfer_server(int connfd) {
     request_t req;
     response_t res;
-    char *buf;
     char filepath[MAXLINE];
-    FILE *file;
-    
-    // If the number of bytes read is different from the number of bytes expected
-    if (Rio_readn(connfd, &req, sizeof(request_t)) != sizeof(request_t)) {
-        fprintf(stderr, "Error: Invalid request received!\n");
-        return;
+    struct stat st;
+    int fd;
+    ssize_t n;
+    // Read the client's request.
+    if ((n = rio_readn(connfd, &req, sizeof(request_t))) != sizeof(request_t)) {
+        if (n == 0) {
+            fprintf(stderr, "Bye bye! Client disconnected\n");
+            return 0;
+        } else if (n < 0) {
+            perror("Error reading request");
+            return 1;
+        } else {
+            fprintf(stderr, "Error: Invalid request received!\n");
+            return 1;
+        }
     }
 
-    switch (req.type)
-    {
-    case GET:
-        // Create the file path
-        snprintf(filepath, STORAGE_PATH_LEN + MAX_FILENAME, "%s%s", STORAGE_PATH, req.filename);
-        
-        // Open the file
-        file = fopen(filepath, "rb");
-        if (file == NULL) {
-            res.code = ERROR_FILE_NOT_FOUND;
+    switch (req.type) {
+        case GET:
+            /* Constitution du chemin complet du fichier */
+            snprintf(filepath, STORAGE_PATH_LEN + MAX_FILENAME, "%s%s", STORAGE_PATH, req.filename);
+            
+            /* Ouverture du fichier */
+            if ((fd = open(filepath, O_RDONLY)) < 0) {
+                perror(filepath);
+                res.code = ERROR_FILE_NOT_FOUND;
+                res.file_size = 0;
+                rio_writen(connfd, &res, sizeof(response_t));
+                return 1;
+            }
+            
+            /* Récupération de la taille du fichier */
+            if (fstat(fd, &st) < 0) {
+                perror("Error getting file size");
+                res.code = ERROR_FILE_NOT_FOUND;
+                res.file_size = 0;
+                rio_writen(connfd, &res, sizeof(response_t));
+                close(fd);
+                return 1;
+            }
+            res.file_size = st.st_size;
+            res.code = SUCCESS;
+
+            /* Envoi de l’en-tête de réponse (code + taille du fichier) */
+            rio_writen(connfd, &res, sizeof(response_t));
+
+            /* Envoi du fichier par blocs */
+            uint64_t remaining = res.file_size;
+            char buffer[MESSAGE_SIZE];
+            while (remaining > 0) {
+                uint64_t bytes_to_read = (remaining < MESSAGE_SIZE) ? remaining : MESSAGE_SIZE;
+                uint64_t n = read(fd, buffer, bytes_to_read);
+                if (n < 0) {
+                    perror("Error reading file");
+                    break;
+                }
+                rio_writen(connfd, buffer, n);
+                remaining -= n;
+            }
+            close(fd);
+            break;
+
+        default:
+            res.code = ERROR_INVALID_REQUEST;
             res.file_size = 0;
             rio_writen(connfd, &res, sizeof(response_t));
-            return;
-        }
-
-        // Determine the size of the file
-        fseek(file, 0, SEEK_END);
-        res.file_size = ftell(file); // Get the current position in the file
-        rewind(file); // Go back to the beginning of the file
-
-        // Send the response to the client
-        buf = malloc(res.file_size);
-
-        // If the number of bytes read is different from the number of bytes expected
-        if (fread(buf, 1, res.file_size, file) != res.file_size) {
-            fprintf(stderr, "Error: reading file\n");
-            res.code = ERROR_FILE_NOT_FOUND;
-            res.file_size = 0;
-            Rio_writen(connfd, &res, sizeof(response_t));
-            free(buf);
-            Fclose(file);
-            return;
-        }
-        Fclose(file);
-        res.code = SUCCESS;
-        Rio_writen(connfd, &res, sizeof(response_t));
-        Rio_writen(connfd, buf, res.file_size);
-        free(buf);
-        return;
-
-    default:
-        res.code = ERROR_INVALID_REQUEST;
-        res.file_size = 0;
-        Rio_writen(connfd, &res, sizeof(response_t));
-        return;
-    }
+            break;
+    }     
+    return 1;
 }
 
 void sigchild_handler(int sig) {
     pid_t pid;
     while ((pid = waitpid(-1, 0, WNOHANG)) > 0) {
-        fprintf(stdout, "child %d reaped", pid);
     }
 }
 
@@ -86,7 +102,6 @@ void work_client(int listenfd) {
     socklen_t clientlen;
     struct sockaddr_in clientaddr;
     char client_hostname[MAX_NAME_LEN], client_ip_string[INET_ADDRSTRLEN];
-
     int connfd;
 
     clientlen = sizeof(struct sockaddr_in);
@@ -97,14 +112,13 @@ void work_client(int listenfd) {
             break;
         }
         /* determine the name of the client */
-        Getnameinfo((SA *) &clientaddr, clientlen,
+        Getnameinfo((SA *)&clientaddr, clientlen,
                     client_hostname, MAX_NAME_LEN, 0, 0, 0);
         /* determine the textual representation of the client's IP address */
         Inet_ntop(AF_INET, &clientaddr.sin_addr, client_ip_string,
                   INET_ADDRSTRLEN);
-        printf("server connected to %s (%s)\n", client_hostname,
-               client_ip_string);
-        file_transfer_server(connfd);
+        printf("server connected to %s (%s)\n", client_hostname, client_ip_string);
+        while(file_transfer_server(connfd));
         Close(connfd);
     }
 }
@@ -129,8 +143,8 @@ int main(void) {
     Signal(SIGCHLD, sigchild_handler);
     Signal(SIGINT, sigint_handler);
 
-    while (1) 
-        Pause(); 
+    while (1)
+        Pause();
 
     return 0;
 }
