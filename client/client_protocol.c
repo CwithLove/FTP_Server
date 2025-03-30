@@ -1,23 +1,40 @@
-#include "protocol.h"
-#include "csapp.h"
+#include "client_protocol.h"
+
+uint64_t get_file_size(char *filename) {
+    struct stat st;
+    if (!stat(filename, &st)) {
+        return st.st_size;
+    } else {
+        return 0; 
+    }
+}
 
 void file_transfer_client(int clientfd, char *filename, typereq_t type) {
     request_t req;
     response_t res;
     char filepath[MAXLINE];
     int fd;
-    ssize_t n;
+    uint64_t n;
+    uint64_t bytes_installed;
+
+    /* Construction du chemin de stockage du fichier */
+    snprintf(filepath, STORAGE_PATH_LEN + MAX_FILENAME, "%s%s", STORAGE_PATH, filename);
+
+    /* Vérification de l'existence du fichier */
+    bytes_installed = get_file_size(filepath);
 
     // Prepare the request
     req.type = type;
+    req.offset = bytes_installed;
     strncpy(req.filename, filename, MAX_FILENAME);
     req.filename[strcspn(req.filename, "\n")] = '\0';  // Remove the newline character
 
+    fprintf(stdout, "Sending request to server...\n");
     // Send the request to the server
     Rio_writen(clientfd, &req, sizeof(request_t));
-    
+
     // Receive the response from the server
-    while ((n = rio_readn(clientfd, &res, sizeof(response_t))) != sizeof(response_t)) {
+    if ((n = rio_readn(clientfd, &res, sizeof(response_t))) != sizeof(response_t)) {
         if (n < 0) {
             perror("Error reading response");
             return;
@@ -25,53 +42,66 @@ void file_transfer_client(int clientfd, char *filename, typereq_t type) {
             fprintf(stderr, "Error: Server disconnected\n");
             return;
         }
-        fprintf(stderr, "Error: Invalid response received!\n");
+        fprintf(stderr, "Error: Invxalid response received!\n");
         return;
     }
     
+    // Convert the response to host byte order
+    res.file_size = ntohl(res.file_size);
+
     // Start timer
     struct timeval start, end;
 
     switch (res.code)
     {
         case SUCCESS:
-        /* Construction du chemin de stockage du fichier */
-        snprintf(filepath, STORAGE_PATH_LEN + MAX_FILENAME, "%s%s", STORAGE_PATH, req.filename);
-        
-        /* Ouverture (création) du fichier en écriture avec descripteur de fichier */
-        if ((fd = open(filepath, O_CREAT | O_WRONLY | O_TRUNC, 0644)) < 0) {
-            perror("open");
-            return;
+
+        if (bytes_installed == 0) {
+            if ((fd = open(filepath, O_CREAT | O_WRONLY | O_TRUNC, 0644)) < 0) {
+                perror("open");
+                return;
+            }
+        } else {
+            if ((fd = open(filepath, O_WRONLY | O_APPEND)) < 0) {
+                perror("open");
+                return;
+            }
+
+            if (lseek(fd, bytes_installed, SEEK_SET) < 0) {
+                perror("lseek");
+                close(fd);
+                return;
+            }
         }
 
         /* Réception du fichier par blocs */
-        uint64_t total = res.file_size;
-        uint64_t received = 0;
+        uint32_t missing_part = res.file_size - bytes_installed;
+        uint32_t received = 0;
         char buffer[MESSAGE_SIZE];
 
         
         gettimeofday(&start, NULL);
-        while (received < total) {
-            uint64_t to_read = (total - received < MESSAGE_SIZE) ? (total - received) : MESSAGE_SIZE;
-            uint64_t n = rio_readn(clientfd, buffer, to_read);
+        while (received < missing_part) {
+            uint32_t to_read = (missing_part - received < MESSAGE_SIZE) ? (missing_part - received) : MESSAGE_SIZE;
+            uint64_t n_read = rio_readn(clientfd, buffer, to_read);
             if (n <= 0) {
                 fprintf(stderr, "Error: reading file data\n");
                 break;
             }
-            uint64_t written = write(fd, buffer, n);
-            if (written != n) {
+            uint64_t written = write(fd, buffer, n_read);
+            if (written != n_read) {
                 perror("write");
                 break;
             }
-            received += n;
+            received += n_read;
         }
         close(fd);
 
         gettimeofday(&end, NULL);
         double time_taken = (end.tv_sec - start.tv_sec) + (end.tv_usec - start.tv_usec) / 1000000.0;
         fprintf(stdout, "Transfer successfully complete.\n");
-        fprintf(stdout, "%ld bytes received in %.6f seconds (%.3f Kbytes/s).\n",
-                res.file_size, time_taken, res.file_size / time_taken / 1024);
+        fprintf(stdout, "%d bytes received in %.6f seconds (%.3f Kbytes/s).\n",
+                res.file_size, time_taken, res.file_size / time_taken / 1024.0);
         break;
     
     case ERROR_FILE_NOT_FOUND:

@@ -16,6 +16,7 @@ int file_transfer_server(int connfd) {
     struct stat st;
     int fd;
     ssize_t n;
+    
     // Read the client's request.
     if ((n = rio_readn(connfd, &req, sizeof(request_t))) != sizeof(request_t)) {
         if (n == 0) {
@@ -30,6 +31,9 @@ int file_transfer_server(int connfd) {
         }
     }
 
+    // Convert the request to host byte order
+    req.offset = ntohl(req.offset);
+
     switch (req.type) {
         case GET:
             /* Constitution du chemin complet du fichier */
@@ -39,7 +43,7 @@ int file_transfer_server(int connfd) {
             if ((fd = open(filepath, O_RDONLY)) < 0) {
                 perror(filepath);
                 res.code = ERROR_FILE_NOT_FOUND;
-                res.file_size = 0;
+                res.file_size = htonl(0);
                 rio_writen(connfd, &res, sizeof(response_t));
                 return 1;
             }
@@ -48,36 +52,50 @@ int file_transfer_server(int connfd) {
             if (fstat(fd, &st) < 0) {
                 perror("Error getting file size");
                 res.code = ERROR_FILE_NOT_FOUND;
-                res.file_size = 0;
+                res.file_size = htonl(0);
                 rio_writen(connfd, &res, sizeof(response_t));
                 close(fd);
                 return 1;
             }
-            res.file_size = st.st_size;
-            res.code = SUCCESS;
 
+            // Positionner le descripteur de fichier à l'offset
+            if (lseek(fd, req.offset, SEEK_SET) < 0) {
+                perror("lseek");
+                res.code = ERROR_INVALID_REQUEST;
+                res.file_size = htonl(st.st_size);
+                rio_writen(connfd, &res, sizeof(response_t));
+                close(fd);
+                return 1;
+            }
+
+
+            res.file_size = htonl((uint32_t)st.st_size);
+            res.code = SUCCESS;
             /* Envoi de l’en-tête de réponse (code + taille du fichier) */
             rio_writen(connfd, &res, sizeof(response_t));
 
             /* Envoi du fichier par blocs */
-            uint64_t remaining = res.file_size;
+            uint32_t remaining = res.file_size;
             char buffer[MESSAGE_SIZE];
             while (remaining > 0) {
-                uint64_t bytes_to_read = (remaining < MESSAGE_SIZE) ? remaining : MESSAGE_SIZE;
-                uint64_t n = read(fd, buffer, bytes_to_read);
-                if (n < 0) {
+                uint32_t bytes_to_read = (remaining < MESSAGE_SIZE) ? remaining : MESSAGE_SIZE;
+                uint64_t n_read = read(fd, buffer, bytes_to_read);
+                if (n_read < 0) {
                     perror("Error reading file");
                     break;
                 }
-                rio_writen(connfd, buffer, n);
-                remaining -= n;
+                if (n_read == 0) {
+                    break; // EOF   
+                }
+                rio_writen(connfd, buffer, n_read);
+                remaining -= n_read;
             }
             close(fd);
             break;
 
         default:
             res.code = ERROR_INVALID_REQUEST;
-            res.file_size = 0;
+            res.file_size = htonl(0);
             rio_writen(connfd, &res, sizeof(response_t));
             break;
     }     

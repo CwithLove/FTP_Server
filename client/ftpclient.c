@@ -1,9 +1,5 @@
-/*
- * echoclient.c - An echo client
- */
-#include "csapp.h"
 #include "ftp_protocol.h"
-#include "protocol.h"
+#include "client_protocol.h"
 
 int main(int argc, char **argv) {
     int clientfd;
@@ -43,7 +39,7 @@ int main(int argc, char **argv) {
             fprintf(stderr, "Error: Invalid command format. Use: <get> <filename> or bye\n");
             continue;
         }
-        fprintf(stdout, "Command: %s\n", cmd);
+        
         if (status == 0) {
             if (strcmp(cmd, "bye") == 0) {
                 fprintf(stdout, "Disconnecting...\n");

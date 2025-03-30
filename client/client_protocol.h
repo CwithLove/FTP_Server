@@ -3,7 +3,19 @@
 
 #include "ftp_protocol.h"
 
+#include "csapp.h"
+#include <time.h>
+#include <stdint.h>
+#include <sys/stat.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <errno.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+
 #define COMMAND_LEN 15
+#define SERVER_PORT 9919 // A CHANGER
 
 /**
  * @brief Function to handle file transfer from the client to the server.

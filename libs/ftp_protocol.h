@@ -34,6 +34,7 @@ typedef enum {
 typedef struct {
     typereq_t type;              // The request type, should be one of typereq_t values
     char filename[MAX_FILENAME]; // The file name requested by the client
+    uint32_t offset; // The offset from which to start reading the file         
 } request_t;
 
 
@@ -48,7 +49,7 @@ typedef enum {
 // The response structure for the FTP protocol
 typedef struct {
     response_code_t code;       // The response code, should be one of response_code_t values
-    uint64_t file_size;           // The size of the file in bytes
+    uint32_t file_size;           // The size of the file in bytes
 } response_t;
 
 #endif // FTP_PROTOCOL_H
