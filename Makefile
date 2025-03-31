@@ -33,7 +33,7 @@ LIBOBJ = $(patsubst $(LIBDIR)/%.c,$(LIBDIR)/%.o,$(LIBSRC))
 all: storage ftpclient ftpmaster ftpslave
  
 storage:
-	mkdir -p $(SERVERDIR)/storage
+	mkdir -p $(CLIENTDIR)/storage
 	mkdir -p $(SLAVESDIR)/storage
 
 %.o: %.c $(INCLUDE)

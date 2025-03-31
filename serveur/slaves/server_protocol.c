@@ -1,40 +1,48 @@
 #include "server_protocol.h"
 
+// Descripteurs de fichiers globaux pour la socket d'écoute et la connexion avec le master
 int listenfd = -1;
 int masterfd = -1;
 
 int file_transfer_server(int connfd) {
-    request_t req;
-    response_t res;
-    char filepath[MAXLINE];
-    struct stat st;
-    int fd;
-    ssize_t n;
-    
-    // Read the client's request.
+    request_t req;       // Structure contenant la requête envoyée par le client
+    response_t res;      // Structure contenant la réponse à envoyer au client
+    char filepath[MAXLINE]; // Buffer pour le chemin complet du fichier
+    struct stat st;      // Structure pour récupérer les informations sur le fichier
+    int fd;              // Descripteur du fichier à transférer
+    ssize_t n;           // Nombre d'octets lus
+
+    // Lecture de la requête du client
     if ((n = rio_readn(connfd, &req, sizeof(request_t))) != sizeof(request_t)) {
+        // Si aucune donnée n'est lue, le client s'est déconnecté
         if (n == 0) {
             fprintf(stderr, "Bye bye! Client disconnected\n");
             return 0;
         } else if (n < 0) {
+            // En cas d'erreur de lecture
             perror("Error reading request");
             return 1;
         } else {
+            // Requête de taille invalide
             fprintf(stderr, "Error: Invalid request received!\n");
             return 1;
         }
     }
 
-    // Convert the request to host byte order
+    // Conversion de l'offset de la requête du format réseau vers le format hôte
     req.offset = ntohl(req.offset);
 
+    // Traitement de la requête en fonction de son type
     switch (req.type) {
         case GET:
-            /* Constitution du chemin complet du fichier */
+            /* Constitution du chemin complet du fichier :
+             * Concaténation du chemin de stockage et du nom de fichier demandé.
+             */
             snprintf(filepath, STORAGE_PATH_LEN + MAX_FILENAME, "%s%s", STORAGE_PATH, req.filename);
             
-            /* Ouverture du fichier */
+            /* Tentative d'ouverture du fichier en mode lecture seule */
             if ((fd = open(filepath, O_RDONLY)) < 0) {
+                // Si l'ouverture échoue, on informe le client avec un code d'erreur
                 perror(filepath);
                 res.code = ERROR_FILE_NOT_FOUND;
                 res.file_size = htonl(0);
@@ -42,7 +50,7 @@ int file_transfer_server(int connfd) {
                 return 1;
             }
             
-            /* Récupération de la taille du fichier */
+            /* Récupération des informations sur le fichier (notamment la taille) */
             if (fstat(fd, &st) < 0) {
                 perror("Error getting file size");
                 res.code = ERROR_FILE_NOT_FOUND;
@@ -52,7 +60,7 @@ int file_transfer_server(int connfd) {
                 return 1;
             }
 
-            // Si le fichier est déjà à jour, on envoie un code de mise à jour
+            // Si le client a déjà le fichier à jour (offset >= taille du fichier)
             if (req.offset >= st.st_size) {
                 res.code = UPDATED;
                 res.file_size = htonl(st.st_size);
@@ -61,7 +69,7 @@ int file_transfer_server(int connfd) {
                 return 1;
             }
 
-            // Positionner le descripteur de fichier à l'offset
+            // Positionnement du descripteur de fichier à l'offset demandé par le client
             if (lseek(fd, req.offset, SEEK_SET) < 0) {
                 perror("lseek");
                 res.code = ERROR_INVALID_REQUEST;
@@ -71,16 +79,20 @@ int file_transfer_server(int connfd) {
                 return 1;
             }
 
-
+            /* Préparation de la réponse :
+             * - Conversion de la taille du fichier en format réseau.
+             * - Définition du code de réussite.
+             */
             res.file_size = htonl((uint32_t)st.st_size);
             res.code = SUCCESS;
-            /* Envoi de l’en-tête de réponse (code + taille du fichier) */
+            /* Envoi de l’en-tête de réponse (code et taille du fichier) au client */
             rio_writen(connfd, &res, sizeof(response_t));
 
-            /* Envoi du fichier par blocs */
+            /* Transfert du fichier par blocs */
             uint32_t remaining = res.file_size;
             char buffer[MESSAGE_SIZE];
             while (remaining > 0) {
+                // Détermination du nombre d'octets à lire lors de ce cycle (la taille du bloc ou le reste du fichier)
                 uint32_t bytes_to_read = (remaining < MESSAGE_SIZE) ? remaining : MESSAGE_SIZE;
                 uint64_t n_read = read(fd, buffer, bytes_to_read);
                 if (n_read < 0) {
@@ -88,39 +100,23 @@ int file_transfer_server(int connfd) {
                     break;
                 }
                 if (n_read == 0) {
-                    break; // EOF   
+                    break; // Fin de fichier
                 }
+                // Envoi des octets lus vers le client
                 rio_writen(connfd, buffer, n_read);
                 remaining -= n_read;
             }
+            // Fermeture du descripteur du fichier après transfert
             close(fd);
             break;
 
-        // case LS:
-        //     pid_t pid;
-        //     if ((pid = fork()) == 0) {
-        //         dup2(connfd, STDOUT_FILENO);
-        //         dup2(connfd, STDERR_FILENO);
-        //         if (execlp("ls", "ls", "-l", NULL) < 0) {
-        //             perror("execlp ls");
-        //             exit(EXIT_FAILURE);
-        //         }
-        //     } else {
-        //         waitpid(pid, NULL, 0);
-        //     }
-        //     break;
-
-        // case RM:
-        //     break;
-
-        // case PUT:
-        //     break;
-
         default:
+            // Pour une requête de type inconnu, on envoie un code d'erreur
             res.code = ERROR_INVALID_REQUEST;
             res.file_size = htonl(0);
             rio_writen(connfd, &res, sizeof(response_t));
             break;
-    }     
+    }
+    // Retourne 1 pour indiquer que le transfert ou le traitement peut continuer
     return 1;
 }

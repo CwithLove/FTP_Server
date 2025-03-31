@@ -44,6 +44,12 @@ void file_transfer_client(int clientfd, char *filename, typereq_t type);
  */
 int analyze_command(char *buf, char *cmd, char *filename);
 
+/**
+ * @brief Function to connect to a slave server.
+ * 
+ * @param masterfd The file descriptor for the master server connection.
+ * @return The file descriptor for the slave server connection, or -1 on error.
+ */
 int client_connect_to_slave(int masterfd);
 
 #endif

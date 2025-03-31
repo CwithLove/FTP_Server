@@ -6,6 +6,13 @@
 extern int listenfd;
 extern int masterfd;
 
+/**
+ * * @brief Handles the file transfer from the server to the client.
+ * 
+ * * @param connfd The file descriptor for the connection to the client.
+ * 
+ * * @return 0 to stop the while loop, 1 to continue.
+ */
 int file_transfer_server(int connfd);
 
 #endif
