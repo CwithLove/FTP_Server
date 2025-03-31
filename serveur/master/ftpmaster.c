@@ -22,7 +22,7 @@ int main(int argc, char** argv) {
     uint8_t status;
     socklen_t clientlen;
     struct sockaddr_in clientaddr;
-    int port;
+    uint32_t port;
     int last_slave_selected = 0;
     
     clientlen = (socklen_t)sizeof(clientaddr);
@@ -72,9 +72,32 @@ int main(int argc, char** argv) {
         for (int i = 0; i < num_slaves_connected; i++) {
             if (FD_ISSET(slaves[i].fd, &read_fds)) {
                 Rio_readn(slaves[i].fd, &status, sizeof(slave_status_t));
-                slaves[i].available = status; 
-            }
+                slaves[i].available = status;
+                
+                if (status == DEAD) {
+                    FD_CLR(slaves[i].fd, &fdset);
+                    fprintf(stderr, "Slave %s: %d is disconnected\n", slaves[i].hostname, slaves[i].port);
+                    close(slaves[i].fd);
 
+                    if (slaves[i].fd == last_fd) {
+                        last_fd = listenfd;
+                        for (int j = 0; j < num_slaves_connected; j++) {
+                            if (slaves[j].fd > last_fd && FD_ISSET(slaves[j].fd, &fdset))
+                                last_fd = slaves[j].fd;
+                        }
+                    }
+                    for (int j = i; j < num_slaves_connected; j++) { 
+                        slaves[j] = slaves[j + 1];
+                    }
+                    num_slaves_connected--;
+                    i--; 
+                    if (num_slaves_connected == 0) {
+                        fprintf(stderr, "All slaves disconnected\n");
+                        close(listenfd);
+                        exit(0);
+                    }
+                }
+            }
         }
     }
 

@@ -27,8 +27,9 @@
 // This structure is used to define the request sent by the client
 typedef enum {
     GET,    // Only GET is processed in this phase
-    // PUT, // TO DO LATER
-    // LS  // TO DO LATER
+    // PUT, 
+    // LS,
+    // RM
 } typereq_t;
 
 
@@ -43,6 +44,7 @@ typedef struct {
 // The response code for the FTP protocol 
 typedef enum {
     SUCCESS,
+    UPDATED,
     ERROR_FILE_NOT_FOUND,
     ERROR_INVALID_REQUEST
 } response_code_t;
@@ -62,7 +64,7 @@ typedef enum {
 
 typedef struct {
     char *hostname;
-    uint16_t port;
+    uint32_t port;
     int fd;
     slave_status_t available;
 } slave_t;
@@ -70,7 +72,7 @@ typedef struct {
 typedef struct {
     int slave_available;
     char hostname[MAX_HOSTNAME];
-    uint16_t port;
+    uint32_t port;
 } slave_info_t;
 
 

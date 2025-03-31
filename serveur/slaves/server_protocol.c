@@ -52,6 +52,15 @@ int file_transfer_server(int connfd) {
                 return 1;
             }
 
+            // Si le fichier est déjà à jour, on envoie un code de mise à jour
+            if (req.offset >= st.st_size) {
+                res.code = UPDATED;
+                res.file_size = htonl(st.st_size);
+                rio_writen(connfd, &res, sizeof(response_t));
+                close(fd);
+                return 1;
+            }
+
             // Positionner le descripteur de fichier à l'offset
             if (lseek(fd, req.offset, SEEK_SET) < 0) {
                 perror("lseek");
@@ -86,6 +95,26 @@ int file_transfer_server(int connfd) {
             }
             close(fd);
             break;
+
+        // case LS:
+        //     pid_t pid;
+        //     if ((pid = fork()) == 0) {
+        //         dup2(connfd, STDOUT_FILENO);
+        //         dup2(connfd, STDERR_FILENO);
+        //         if (execlp("ls", "ls", "-l", NULL) < 0) {
+        //             perror("execlp ls");
+        //             exit(EXIT_FAILURE);
+        //         }
+        //     } else {
+        //         waitpid(pid, NULL, 0);
+        //     }
+        //     break;
+
+        // case RM:
+        //     break;
+
+        // case PUT:
+        //     break;
 
         default:
             res.code = ERROR_INVALID_REQUEST;

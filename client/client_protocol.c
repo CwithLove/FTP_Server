@@ -103,6 +103,11 @@ void file_transfer_client(int clientfd, char *filename, typereq_t type) {
         fprintf(stdout, "%d bytes received in %.6f seconds (%.3f Kbytes/s).\n",
                 res.file_size, time_taken, res.file_size / time_taken / 1024.0);
         break;
+
+    case UPDATED:
+        fprintf(stdout, "File already up to date.\n");
+        fprintf(stdout, "%d bytes already received.\n", res.file_size);
+        break;
     
     case ERROR_FILE_NOT_FOUND:
         fprintf(stderr, "Error: File not found\n");
@@ -177,13 +182,11 @@ int client_connect_to_slave(int masterfd) {
     slave_info.slave_available = ntohl(slave_info.slave_available);
     slave_info.port = ntohl(slave_info.port);
     if (slave_info.slave_available == 0) {
-        fprintf(stderr, "No slave available\n");
         return -1;
     }
-    fprintf(stdout, "----------------------------------------\n");
     int fd = open_clientfd(slave_info.hostname, slave_info.port);
     if (fd < 0) {
-        fprintf(stderr, "Error: Failed to connect to slave %s:%d\n", slave_info.hostname, slave_info.port);
+        fprintf(stderr, "Error: Failed to connect to slave %s: %d\n", slave_info.hostname, slave_info.port);
         exit(0);
     }
     return fd;

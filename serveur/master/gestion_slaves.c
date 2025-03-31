@@ -9,13 +9,13 @@ int master_connect_to_slaves(int *slaves_connected) {
     while (i < NB_SLAVES) {
         int slave_fd = open_clientfd(slaves_config_host[i], atoi(slaves_config_port[i]));
         if (slave_fd < 0) {
-            fprintf(stderr, "Error connecting to slave %s:%d\n", slaves[i].hostname, slaves[i].port);
+            fprintf(stderr, "Slave %s: %d is not available\n", slaves_config_host[i], atoi(slaves_config_port[i]));
         } else {
             slaves[slave_found].fd = slave_fd;
             slaves[slave_found].hostname = strdup(slaves_config_host[i]);
             slaves[slave_found].port = atoi(slaves_config_port[i]);
             slaves[slave_found].available = AVAILBLE;
-            fprintf(stdout, "Connected to slave %s:%d\n", slaves[slave_found].hostname, slaves[slave_found].port);
+            fprintf(stdout, "Connected to slave %s: %d\n", slaves[slave_found].hostname, slaves[slave_found].port);
             slave_found++;
         }
         i++;
@@ -32,14 +32,14 @@ int redirection_to_slave(int connfd, int num_slave_connected, int last_slave_sel
         if (slaves[slave_index].available == AVAILBLE) {
             info.slave_available = htonl(1);
             strcpy(info.hostname, slaves[i].hostname);
-            info.port = htonl(slaves[i].port);
+            info.port = slaves[i].port;
+            info.port = htonl(info.port);
             Rio_writen(connfd, &info, sizeof(slave_info_t));
             return i;
         } else {
-            fprintf(stderr, "Eslave %s:%d is busy\n", slaves[i].hostname, slaves[i].port);
+            fprintf(stderr, "Slave %s: %d is not available\n", slaves[i].hostname, slaves[i].port);
         }
     }
-
     // No slave available
     info.slave_available = 0;
     info.hostname[0] = '\0';

@@ -2,7 +2,14 @@
 
 void sigint_handler(int sig) {
     slave_status_t status = DEAD;
+    fprintf(stderr, "Shutting down...\n");
+    // Envoi du message de déconnexion au master
+    if (masterfd == -1) {
+        exit(0);
+    }
     Rio_writen(masterfd, &status, sizeof(slave_status_t));
+    close(listenfd);
+    close(masterfd);
     exit(0);
 }
 
@@ -15,7 +22,7 @@ int main(int argc, char **argv) {
     socklen_t clientlen;
     struct sockaddr_in clientaddr;
     clientlen = (socklen_t)sizeof(clientaddr);
-    int port = atoi(argv[1]);
+    uint32_t port = atoi(argv[1]);
 
     // Pour la connexion au master
     listenfd = Open_listenfd(port);

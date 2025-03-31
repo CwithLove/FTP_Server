@@ -35,7 +35,7 @@ int main(int argc, char **argv) {
     fprintf(stdout, "----------------------------------------\n");
     fprintf(stdout, "Available commands:\n");
     fprintf(stdout, "1. get <filename>\n");
-    fprintf(stdout, "2. bye\n");
+    fprintf(stdout, "2. bye\n\n");
     while (1) {
         // Prompt the user for a command
         fprintf(stdout, "ftp> ");
@@ -66,6 +66,12 @@ int main(int argc, char **argv) {
         if (strcmp(cmd, "get") == 0) {
             type = GET;
             file_transfer_client(clientfd, filename, type);
+        // } else if (strcmp(cmd, "put") == 0) {
+        //     type = PUT;
+        //     file_transfer_client(clientfd, filename, type);
+        // } else if (strcmp(cmd, "ls") == 0) {
+        //     type = LS;
+            // file_transfer_client(clientfd, filename, type);
         } else {
             fprintf(stderr, "Error: Unsupported command.\n");
             continue;
