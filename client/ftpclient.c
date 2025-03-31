@@ -2,23 +2,34 @@
 #include "client_protocol.h"
 
 int main(int argc, char **argv) {
-    int clientfd;
     char *host;
     char buf[MAXLINE];
     char cmd[COMMAND_LEN];
     char filename[MAXLINE];
     typereq_t type;
     int status;
+    int masterfd, clientfd;
 
     if (argc != 2) {
         fprintf(stderr, "usage: %s <host>\n", argv[0]);
         exit(0);
     }
+    fprintf(stdout, "Connecting to %s...\n", argv[1]);
     host = argv[1];
-
-    // Create a socket and connect to the server
-    clientfd = Open_clientfd(host, PORT);
     
+    // Create a socket and connect to the server
+    masterfd = open_clientfd(host, PORT);
+    if (masterfd < 0) {
+        fprintf(stderr, "Error: Failed to connect to server, check the connection informations %s\n", host);
+        exit(0);
+    }
+    
+    clientfd = client_connect_to_slave(masterfd);
+    if (clientfd < 0) {
+        fprintf(stdout, "No Server available, please try again later.\n");
+        exit(0);
+    }
+
     fprintf(stdout, "----------------------------------------\n");
     fprintf(stdout, "Welcome to the FTP client!\n");
     fprintf(stdout, "----------------------------------------\n");

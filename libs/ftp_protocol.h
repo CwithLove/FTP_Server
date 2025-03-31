@@ -16,11 +16,13 @@
 #include <netinet/in.h>
 
 #define MAX_FILENAME 256
-
-#define PORT 9919 // A CHANGER
+#define MAX_HOSTNAME 256
 #define MESSAGE_SIZE 1024
 #define STORAGE_PATH "./storage/"
 #define STORAGE_PATH_LEN 10
+#define PORT 9919 // A CHANGER
+#define SLAVE_PORT 2222
+#define NB_SLAVES 3
 
 // This structure is used to define the request sent by the client
 typedef enum {
@@ -51,5 +53,25 @@ typedef struct {
     response_code_t code;       // The response code, should be one of response_code_t values
     uint32_t file_size;           // The size of the file in bytes
 } response_t;
+
+typedef enum {
+    AVAILBLE,
+    BUSY,
+    DEAD
+} slave_status_t;
+
+typedef struct {
+    char *hostname;
+    uint16_t port;
+    int fd;
+    slave_status_t available;
+} slave_t;
+
+typedef struct {
+    int slave_available;
+    char hostname[MAX_HOSTNAME];
+    uint16_t port;
+} slave_info_t;
+
 
 #endif // FTP_PROTOCOL_H

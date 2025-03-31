@@ -44,4 +44,6 @@ void file_transfer_client(int clientfd, char *filename, typereq_t type);
  */
 int analyze_command(char *buf, char *cmd, char *filename);
 
+int client_connect_to_slave(int masterfd);
+
 #endif

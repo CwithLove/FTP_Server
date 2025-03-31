@@ -169,3 +169,22 @@ int analyze_command(char *buf, char *cmd, char *filename) {
 
     return tokenCount - 1;
 }
+
+int client_connect_to_slave(int masterfd) {
+    slave_info_t slave_info;
+
+    Rio_readn(masterfd, &slave_info, sizeof(slave_info_t));
+    slave_info.slave_available = ntohl(slave_info.slave_available);
+    slave_info.port = ntohl(slave_info.port);
+    if (slave_info.slave_available == 0) {
+        fprintf(stderr, "No slave available\n");
+        return -1;
+    }
+    fprintf(stdout, "----------------------------------------\n");
+    int fd = open_clientfd(slave_info.hostname, slave_info.port);
+    if (fd < 0) {
+        fprintf(stderr, "Error: Failed to connect to slave %s:%d\n", slave_info.hostname, slave_info.port);
+        exit(0);
+    }
+    return fd;
+}

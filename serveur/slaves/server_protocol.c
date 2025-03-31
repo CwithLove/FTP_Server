@@ -1,13 +1,7 @@
-#include "csapp.h"
-#include "ftp_protocol.h"
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
+#include "server_protocol.h"
 
-#define MAX_NAME_LEN 256
-#define NB_PROC 3
-
-pid_t* childs;
+int listenfd = -1;
+int masterfd = -1;
 
 int file_transfer_server(int connfd) {
     request_t req;
@@ -100,69 +94,4 @@ int file_transfer_server(int connfd) {
             break;
     }     
     return 1;
-}
-
-void sigchild_handler(int sig) {
-    pid_t pid;
-    while ((pid = waitpid(-1, 0, WNOHANG)) > 0) {
-    }
-}
-
-void sigint_handler(int sig) {
-    printf("\nArrêt du serveur...\n");
-    for (int i = 0; i < NB_PROC; i++) {
-        kill(childs[i], SIGINT);
-    }
-    exit(0);
-}
-
-void work_client(int listenfd) {
-    socklen_t clientlen;
-    struct sockaddr_in clientaddr;
-    char client_hostname[MAX_NAME_LEN], client_ip_string[INET_ADDRSTRLEN];
-    int connfd;
-
-    clientlen = sizeof(struct sockaddr_in);
-
-    while (1) {
-        connfd = accept(listenfd, (SA *)&clientaddr, &clientlen);
-        if (connfd == -1) {
-            break;
-        }
-        /* determine the name of the client */
-        Getnameinfo((SA *)&clientaddr, clientlen,
-                    client_hostname, MAX_NAME_LEN, 0, 0, 0);
-        /* determine the textual representation of the client's IP address */
-        Inet_ntop(AF_INET, &clientaddr.sin_addr, client_ip_string,
-                  INET_ADDRSTRLEN);
-        printf("server connected to %s (%s)\n", client_hostname, client_ip_string);
-        while(file_transfer_server(connfd));
-        Close(connfd);
-    }
-}
-
-int main(void) {
-    int listenfd;
-    pid_t pid;
-
-    childs = (pid_t*)malloc(NB_PROC * sizeof(pid_t));
-
-    listenfd = Open_listenfd(PORT);
-
-    for (int i = 0; i < NB_PROC; i++) {
-        pid = Fork();
-        if (pid == 0) {  // Child process
-            work_client(listenfd);
-            exit(0);
-        }
-        childs[i] = pid;
-    }
-
-    Signal(SIGCHLD, sigchild_handler);
-    Signal(SIGINT, sigint_handler);
-
-    while (1)
-        Pause();
-
-    return 0;
 }

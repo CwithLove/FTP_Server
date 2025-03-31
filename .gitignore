@@ -35,8 +35,9 @@
 *.i*86
 *.x86_64
 *.hex
+ftpslave
 ftpclient
-ftpserver
+ftpmaster
 
 # Debug files
 *.dSYM/
