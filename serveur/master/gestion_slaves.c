@@ -1,7 +1,7 @@
 #include "gestion_slaves.h"
 
 // Tableaux de configuration pour les esclaves (à adapter selon votre configuration réseau)
-char *slaves_config_host[NB_SLAVES] = {"im2ag-203-14", "im2ag-203-14", "im2ag-203-14"}; // A CHANGER
+char *slaves_config_host[NB_SLAVES] = {"im2ag-217-03", "im2ag-217-04", "im2ag-203-14"}; // A CHANGER
 char *slaves_config_port[NB_SLAVES] = {"2222", "2223", "2224"}; // A CHANGER
 
 int master_connect_to_slaves(int *slaves_connected) {
